@@ -65,13 +65,13 @@ main :: proc() {
     render_texture   := rl.LoadRenderTexture(screen_width, screen_height)
     sprite_atlas     := rl.LoadTexture("resources/sprite_atlas.png")
 
-    hit_sound        := rl.LoadSound("resources/sounds/hit.wav")
     explosion_sound  := rl.LoadSound("resources/sounds/explosion.wav")
-    paddle_hit_sound := rl.LoadSound("resources/sounds/paddle hit.wav")
+    brick_hit_sound  := rl.LoadSound("resources/sounds/brick_hit.wav")
+    paddle_hit_sound := rl.LoadSound("resources/sounds/paddle_hit.wav")
 
-    rl.SetSoundVolume(hit_sound, 0.5)
-    rl.SetSoundVolume(explosion_sound, 0.5)
-    rl.SetSoundVolume(paddle_hit_sound, 0.5)
+    rl.SetSoundVolume(brick_hit_sound, 0.2)
+    rl.SetSoundVolume(explosion_sound, 0.6)
+    rl.SetSoundVolume(paddle_hit_sound, 0.2)
 
     // Game Data
     player_paddle = Paddle {
@@ -92,15 +92,19 @@ main :: proc() {
     }
 
     number_of_bricks :: 1024
-    bricks := [number_of_bricks]Brick{}
+    bricks   := [number_of_bricks]Brick{}
+    x_offset := f32(screen_width) * 0.5 - 960
 
     for i := 0; i < number_of_bricks; i += 1 {
         row := i / 32
+        x_position := f32((i & 31) * 60) + x_offset
+        y_position := f32(row) * 20
+
         bricks[i] = Brick {
             texture       = sprite_atlas,
             textureCoords = rl.Rectangle{0, 20, 60, 20},
             damageCoords  = rl.Rectangle{0, 40, 60, 20},
-            position      = rl.Vector2{((f32(i % 32) * 60) + f32(screen_width) / 2) - 60 * 16, f32(row) * 20},
+            position      = rl.Vector2{x_position, y_position},
             size          = rl.Vector2{60, 20},
             health        = 2,
             hasDied       = false,
@@ -123,7 +127,7 @@ main :: proc() {
         }
 
         if (rl.IsKeyPressed(rl.KeyboardKey.SPACE)) {
-            rl.PlaySound(hit_sound)
+            rl.PlaySound(brick_hit_sound)
         }
 
         // paddle bounds
@@ -149,7 +153,7 @@ main :: proc() {
                     0, 
                     rl.WHITE
                 )
-                check_brick_collision(&ball, &bricks[i], explosion_sound, hit_sound)
+                check_brick_collision(&ball, &bricks[i], explosion_sound, brick_hit_sound)
             }
         }
 
@@ -207,7 +211,7 @@ main :: proc() {
     rl.UnloadTexture(sprite_atlas)
     rl.UnloadRenderTexture(render_texture)
     rl.CloseWindow()
-    rl.UnloadSound(hit_sound)
+    rl.UnloadSound(brick_hit_sound)
     rl.UnloadSound(explosion_sound)
     rl.UnloadSound(paddle_hit_sound)
     rl.CloseAudioDevice()
@@ -238,7 +242,7 @@ check_paddle_collision :: proc(ball: ^Ball, paddle: ^Paddle, paddle_hit_sound: r
     }
 }
 
-check_brick_collision :: proc(ball: ^Ball, brick: ^Brick, explosion_sound: rl.Sound, hit_sound: rl.Sound) {
+check_brick_collision :: proc(ball: ^Ball, brick: ^Brick, explosion_sound: rl.Sound, brick_hit_sound: rl.Sound) {
     ball_rect := rl.Rectangle{ball.position.x, ball.position.y, ball.size, ball.size}
     brick_rect := rl.Rectangle{brick.position.x, brick.position.y, brick.size.x, brick.size.y}
 
@@ -266,7 +270,7 @@ check_brick_collision :: proc(ball: ^Ball, brick: ^Brick, explosion_sound: rl.So
             ball.position.y = brick.position.y + brick.size.y
         }
         brick.health -= 1
-        rl.PlaySound(hit_sound)
+        rl.PlaySound(brick_hit_sound)
         if (brick.health == 0) {
             rl.PlaySound(explosion_sound)
             brick.hasDied = true
