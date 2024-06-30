@@ -35,6 +35,7 @@ Brick :: struct {
     position      : rl.Vector2,
     size          : rl.Vector2,
     health        : i32,
+    hasDied       : bool,
 }
 
 player_paddle : Paddle
@@ -43,6 +44,7 @@ ball : Ball
 PADDLE_SPEED :: 1500
 BALL_SPEED :: 3
 
+
 main :: proc() {
     screen_width  := i32(1920)
     screen_height := i32(1080)
@@ -50,6 +52,8 @@ main :: proc() {
     is_running    := true
 
     rl.InitWindow(screen_width, screen_height, "Brick Breakers")
+    rl.InitAudioDevice()
+
     rl.SetWindowMonitor(monitor_id)
     rl.SetConfigFlags(rl.ConfigFlags{rl.ConfigFlag.VSYNC_HINT})
 
@@ -58,8 +62,16 @@ main :: proc() {
 
     rl.SetTargetFPS(refresh_rate)
     
-    render_texture := rl.LoadRenderTexture(screen_width, screen_height)
-    sprite_atlas := rl.LoadTexture("resources/sprite_atlas.png")
+    render_texture   := rl.LoadRenderTexture(screen_width, screen_height)
+    sprite_atlas     := rl.LoadTexture("resources/sprite_atlas.png")
+
+    hit_sound        := rl.LoadSound("resources/sounds/hit.wav")
+    explosion_sound  := rl.LoadSound("resources/sounds/explosion.wav")
+    paddle_hit_sound := rl.LoadSound("resources/sounds/paddle hit.wav")
+
+    rl.SetSoundVolume(hit_sound, 0.5)
+    rl.SetSoundVolume(explosion_sound, 0.5)
+    rl.SetSoundVolume(paddle_hit_sound, 0.5)
 
     // Game Data
     player_paddle = Paddle {
@@ -91,6 +103,7 @@ main :: proc() {
             position      = rl.Vector2{((f32(i % 32) * 60) + f32(screen_width) / 2) - 60 * 16, f32(row) * 20},
             size          = rl.Vector2{60, 20},
             health        = 2,
+            hasDied       = false,
         }
     }
 
@@ -100,12 +113,17 @@ main :: proc() {
         rl.BeginTextureMode(render_texture)
         rl.ClearBackground(rl.BLACK)
 
+
         // input
         if (rl.IsKeyDown(rl.KeyboardKey.RIGHT)) {
             player_paddle.position.x += PADDLE_SPEED * delta_time
         }
         if (rl.IsKeyDown(rl.KeyboardKey.LEFT)) {
             player_paddle.position.x -= PADDLE_SPEED * delta_time
+        }
+
+        if (rl.IsKeyPressed(rl.KeyboardKey.SPACE)) {
+            rl.PlaySound(hit_sound)
         }
 
         // paddle bounds
@@ -131,7 +149,7 @@ main :: proc() {
                     0, 
                     rl.WHITE
                 )
-                check_brick_collision(&ball, &bricks[i])
+                check_brick_collision(&ball, &bricks[i], explosion_sound, hit_sound)
             }
         }
 
@@ -164,7 +182,7 @@ main :: proc() {
             ball.velocity.y *= -1
         }
 
-        check_paddle_collision(&ball, &player_paddle)
+        check_paddle_collision(&ball, &player_paddle, paddle_hit_sound)
 
         rl.EndTextureMode()
 
@@ -189,10 +207,14 @@ main :: proc() {
     rl.UnloadTexture(sprite_atlas)
     rl.UnloadRenderTexture(render_texture)
     rl.CloseWindow()
+    rl.UnloadSound(hit_sound)
+    rl.UnloadSound(explosion_sound)
+    rl.UnloadSound(paddle_hit_sound)
+    rl.CloseAudioDevice()
     free(&screen_params)
 }
 
-check_paddle_collision :: proc(ball: ^Ball, paddle: ^Paddle) {
+check_paddle_collision :: proc(ball: ^Ball, paddle: ^Paddle, paddle_hit_sound: rl.Sound) {
     ball_rect := rl.Rectangle{ball.position.x, ball.position.y, ball.size, ball.size}
     paddle_rect := rl.Rectangle{paddle.position.x, paddle.position.y, 160, 50}
 
@@ -211,17 +233,19 @@ check_paddle_collision :: proc(ball: ^Ball, paddle: ^Paddle) {
         ball.velocity.y = -speed * m.cos(angle)
 
         ball.position.y = paddle.position.y - ball.size - 1
+
+        rl.PlaySound(paddle_hit_sound)
     }
 }
 
-check_brick_collision :: proc(ball: ^Ball, brick: ^Brick) {
+check_brick_collision :: proc(ball: ^Ball, brick: ^Brick, explosion_sound: rl.Sound, hit_sound: rl.Sound) {
     ball_rect := rl.Rectangle{ball.position.x, ball.position.y, ball.size, ball.size}
     brick_rect := rl.Rectangle{brick.position.x, brick.position.y, brick.size.x, brick.size.y}
 
     if rl.CheckCollisionRecs(ball_rect, brick_rect) {
-        overlap_left := (ball.position.x + ball.size) - brick.position.x
-        overlap_right := (brick.position.x + brick.size.x) - ball.position.x
-        overlap_top := (ball.position.y + ball.size) - brick.position.y
+        overlap_left   := (ball.position.x + ball.size) - brick.position.x
+        overlap_right  := (brick.position.x + brick.size.x) - ball.position.x
+        overlap_top    := (ball.position.y + ball.size) - brick.position.y
         overlap_bottom := (brick.position.y + brick.size.y) - ball.position.y
 
         min_overlap := min(overlap_left, overlap_right, overlap_top, overlap_bottom)
@@ -241,7 +265,11 @@ check_brick_collision :: proc(ball: ^Ball, brick: ^Brick) {
         } else {
             ball.position.y = brick.position.y + brick.size.y
         }
-
         brick.health -= 1
+        rl.PlaySound(hit_sound)
+        if (brick.health == 0) {
+            rl.PlaySound(explosion_sound)
+            brick.hasDied = true
+        }
     }
 }
