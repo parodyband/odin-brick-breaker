@@ -65,44 +65,44 @@ main :: proc() {
         rl.ClearBackground(rl.BLACK)
         rl.DrawFPS(10, 10)
 
-        // // Update paddle position
-        // if (rl.IsKeyDown(rl.KeyboardKey.RIGHT)) {
-        //     player_paddle.position.x += 1000 * delta_time
-        // }
-        // if (rl.IsKeyDown(rl.KeyboardKey.LEFT)) {
-        //     player_paddle.position.x -= 1000 * delta_time
-        // }
+        // Update paddle position
+        if (rl.IsKeyDown(rl.KeyboardKey.RIGHT)) {
+            player_paddle.position.x += 1000 * delta_time
+        }
+        if (rl.IsKeyDown(rl.KeyboardKey.LEFT)) {
+            player_paddle.position.x -= 1000 * delta_time
+        }
 
-        // // Draw paddle
-        // rl.DrawTexturePro(
-        //     player_paddle.texture, 
-        //     player_paddle.textureCoords, 
-        //     rl.Rectangle{player_paddle.position.x, player_paddle.position.y, 300, 75},
-        //     rl.Vector2{0, 0}, 
-        //     0, 
-        //     rl.WHITE
-        // )
+        // Draw paddle
+        rl.DrawTexturePro(
+            player_paddle.texture, 
+            player_paddle.textureCoords, 
+            rl.Rectangle{player_paddle.position.x, player_paddle.position.y, 300, 75},
+            rl.Vector2{0, 0}, 
+            0, 
+            rl.WHITE
+        )
 
-        // // Update and draw ball
-        // ball.position += ball.velocity * delta_time * 5
-        // rl.DrawTexturePro(
-        //     ball.texture, 
-        //     ball.textureCoords, 
-        //     rl.Rectangle{ball.position.x, ball.position.y, ball.size, ball.size},
-        //     rl.Vector2{0, 0}, 
-        //     0, 
-        //     rl.WHITE
-        // )
+        // Update and draw ball
+        ball.position += ball.velocity * delta_time * 5
+        rl.DrawTexturePro(
+            ball.texture, 
+            ball.textureCoords, 
+            rl.Rectangle{ball.position.x, ball.position.y, ball.size, ball.size},
+            rl.Vector2{0, 0}, 
+            0, 
+            rl.WHITE
+        )
 
-        // Check for collision with sides of the screen
-        // if (ball.position.x <= 0 || ball.position.x >= f32(screen_width) - ball.size) {
-        //     ball.velocity.x *= -1
-        // }
-        // if (ball.position.y <= 0 || ball.position.y >= f32(screen_height) - ball.size) {
-        //     ball.velocity.y *= -1
-        // }
+        //Check for collision with sides of the screen
+        if (ball.position.x <= 0 || ball.position.x >= f32(screen_width) - ball.size) {
+            ball.velocity.x *= -1
+        }
+        if (ball.position.y <= 0 || ball.position.y >= f32(screen_height) - ball.size) {
+            ball.velocity.y *= -1
+        }
 
-        //check_collision(&ball, &player_paddle)
+        check_collision(&ball, &player_paddle)
 
         rl.EndTextureMode()
 
