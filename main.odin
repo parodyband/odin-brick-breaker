@@ -61,7 +61,6 @@ color_map := map[int]HSV{
 deathTimer   := f32(1.0)
 currentTimer := f32(0.0)
 hasDied      := false
-random := rand.create(1337)
 
 
 main :: proc() {
