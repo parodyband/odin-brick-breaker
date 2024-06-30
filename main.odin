@@ -3,6 +3,7 @@ package main
 import rl "vendor:raylib"
 import    "core:fmt"
 import m  "core:math/linalg/hlsl"
+import    "core:math/rand"
 
 when ODIN_OS == .Windows {
     foreign import kernel32 "system:kernel32.lib"
@@ -10,14 +11,14 @@ when ODIN_OS == .Windows {
     @(default_calling_convention="stdcall")
     foreign kernel32 {
         AllocConsole :: proc() -> i32 ---
-        FreeConsole :: proc() -> i32 ---
+        FreeConsole  :: proc() -> i32 ---
     }
 }
 
 Paddle :: struct {
     texture       : rl.Texture2D,
     textureCoords : rl.Rectangle,
-    position      : rl.Vector2,
+    position      : rl.Vector2
 }
 
 Ball :: struct {
@@ -44,6 +45,24 @@ ball : Ball
 PADDLE_SPEED :: 1500
 BALL_SPEED :: 3
 
+color_map := map[int]HSV{
+    0 = HSV{90, .5, 1},
+    1 = HSV{120, .5, 1},
+    2 = HSV{140, .5, 1},
+    3 = HSV{160, .5, 1},
+    4 = HSV{180, .5, 1},
+    5 = HSV{200, .5, 1},
+    6 = HSV{220, .5, 1},
+    7 = HSV{240, .5, 1},
+    8 = HSV{260, .5, 1},
+    9 = HSV{280, .5, 1},
+}
+
+deathTimer   := f32(1.0)
+currentTimer := f32(0.0)
+hasDied      := false
+random := rand.create(1337)
+
 
 main :: proc() {
     screen_width  := i32(1920)
@@ -58,7 +77,7 @@ main :: proc() {
     rl.SetConfigFlags(rl.ConfigFlags{rl.ConfigFlag.VSYNC_HINT})
 
     screen_params := m.float2{f32(screen_width), f32(screen_height)}
-    refresh_rate := rl.GetMonitorRefreshRate(monitor_id)
+    refresh_rate  := rl.GetMonitorRefreshRate(monitor_id)
 
     rl.SetTargetFPS(refresh_rate)
     
@@ -68,15 +87,17 @@ main :: proc() {
     explosion_sound  := rl.LoadSound("resources/sounds/explosion.wav")
     brick_hit_sound  := rl.LoadSound("resources/sounds/brick_hit.wav")
     paddle_hit_sound := rl.LoadSound("resources/sounds/paddle_hit.wav")
+    lose_sound       := rl.LoadSound("resources/sounds/lose.wav")
 
     rl.SetSoundVolume(brick_hit_sound, 0.2)
     rl.SetSoundVolume(explosion_sound, 0.6)
     rl.SetSoundVolume(paddle_hit_sound, 0.2)
+    rl.SetSoundVolume(lose_sound, 0.2)
 
     // Game Data
     player_paddle = Paddle {
         texture       = sprite_atlas,
-        textureCoords = rl.Rectangle{0, 0, 60, 20},
+        textureCoords = rl.Rectangle{0, 0, 120, 20},
         position      = rl.Vector2{
             screen_params.x / 2 - 150,
             screen_params.y - 20,
@@ -85,9 +106,9 @@ main :: proc() {
 
     ball = Ball {
         texture       = sprite_atlas,
-        textureCoords = rl.Rectangle{60, 0, 20, 20},
+        textureCoords = rl.Rectangle{120, 0, 20, 20},
         position      = rl.Vector2{f32(screen_params.x / 2), f32(screen_params.y / 2) + 300},
-        velocity      = rl.Vector2{200, -200},
+        velocity      = rl.Vector2{0, -200},
         size          = 20,
     }
 
@@ -126,10 +147,6 @@ main :: proc() {
             player_paddle.position.x -= PADDLE_SPEED * delta_time
         }
 
-        if (rl.IsKeyPressed(rl.KeyboardKey.SPACE)) {
-            rl.PlaySound(brick_hit_sound)
-        }
-
         // paddle bounds
         if (player_paddle.position.x < 0) {
             player_paddle.position.x = 0
@@ -151,7 +168,7 @@ main :: proc() {
                     rl.Rectangle{bricks[i].position.x, bricks[i].position.y, 60, 20},
                     rl.Vector2{0, 0}, 
                     0, 
-                    rl.WHITE
+                    hsv_to_rgb(color_map[i % 10])
                 )
                 check_brick_collision(&ball, &bricks[i], explosion_sound, brick_hit_sound)
             }
@@ -166,9 +183,27 @@ main :: proc() {
             0, 
             rl.WHITE
         )
+        currentTimer -= delta_time
+        currentTimer = m.max_float(currentTimer, 0)
 
         // ball
-        ball.position += ball.velocity * delta_time * BALL_SPEED
+        if currentTimer != 0 {
+            ball.velocity = rl.Vector2{0, 0}
+        }
+        else
+        {
+            if hasDied {
+                angle := rand.float32_range(0, 2 * m.PI)
+                direction := rl.Vector2{
+                    m.cos(angle),
+                    m.sin(angle),
+                }
+                ball.velocity = direction * 200
+            }
+            ball.position += ball.velocity * delta_time * BALL_SPEED
+            hasDied = false
+        }
+
         rl.DrawTexturePro(
             ball.texture, 
             ball.textureCoords, 
@@ -182,9 +217,18 @@ main :: proc() {
         if (ball.position.x <= 0 || ball.position.x >= f32(screen_width) - ball.size) {
             ball.velocity.x *= -1
         }
-        if (ball.position.y <= 0 || ball.position.y >= f32(screen_height) - ball.size) {
+        if (ball.position.y <= 0) {
             ball.velocity.y *= -1
         }
+        if (ball.position.y >= f32(screen_height) - ball.size)
+        {
+            rl.PlaySound(lose_sound)
+            ball.position = rl.Vector2{f32(screen_params.x / 2), f32(screen_params.y / 2) + 300}
+            ball.velocity = rl.Vector2{0, 0}
+            currentTimer = deathTimer
+            hasDied = true
+        }
+
 
         check_paddle_collision(&ball, &player_paddle, paddle_hit_sound)
 
