@@ -37,6 +37,7 @@ Brick :: struct {
     size          : rl.Vector2,
     health        : i32,
     hasDied       : bool,
+    color         : rl.Color,
 }
 
 player_paddle : Paddle
@@ -80,7 +81,7 @@ main :: proc() {
 
     rl.SetTargetFPS(refresh_rate)
     
-    render_texture   := rl.LoadRenderTexture(screen_width, screen_height)
+    fullscreen_texture   := rl.LoadRenderTexture(screen_width, screen_height)
     sprite_atlas     := rl.LoadTexture("resources/sprite_atlas.png")
 
     explosion_sound  := rl.LoadSound("resources/sounds/explosion.wav")
@@ -128,13 +129,14 @@ main :: proc() {
             size          = rl.Vector2{60, 20},
             health        = 2,
             hasDied       = false,
+            color         = hsv_to_rgb(color_map[i % 10])
         }
     }
 
     for is_running && !rl.WindowShouldClose() {
         delta_time := rl.GetFrameTime()
         set_window_parameters(screen_width, screen_height, &screen_params)
-        rl.BeginTextureMode(render_texture)
+        rl.BeginTextureMode(fullscreen_texture)
         rl.ClearBackground(rl.BLACK)
 
 
@@ -167,7 +169,7 @@ main :: proc() {
                     rl.Rectangle{bricks[i].position.x, bricks[i].position.y, 60, 20},
                     rl.Vector2{0, 0}, 
                     0, 
-                    hsv_to_rgb(color_map[i % 10])
+                    bricks[i].color
                 )
                 check_brick_collision(&ball, &bricks[i], explosion_sound, brick_hit_sound)
             }
@@ -238,8 +240,8 @@ main :: proc() {
         
         // fullscreen quad
         rl.DrawTexturePro(
-            texture  = render_texture.texture,
-            source   = rl.Rectangle{0, 0, f32(render_texture.texture.width), -f32(render_texture.texture.height)},
+            texture  = fullscreen_texture.texture,
+            source   = rl.Rectangle{0, 0, f32(fullscreen_texture.texture.width), -f32(fullscreen_texture.texture.height)},
             dest     = rl.Rectangle{0, 0, f32(screen_params.x), f32(screen_params.y)},
             origin   = rl.Vector2{0, 0},
             rotation = 0,
@@ -252,7 +254,7 @@ main :: proc() {
 
     // Clean up
     rl.UnloadTexture(sprite_atlas)
-    rl.UnloadRenderTexture(render_texture)
+    rl.UnloadRenderTexture(fullscreen_texture)
     rl.CloseWindow()
     rl.UnloadSound(brick_hit_sound)
     rl.UnloadSound(explosion_sound)
