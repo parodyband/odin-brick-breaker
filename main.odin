@@ -5,24 +5,13 @@ import    "core:fmt"
 import m  "core:math/linalg/hlsl"
 import    "core:math/rand"
 
-when ODIN_OS == .Windows {
-    foreign import kernel32 "system:kernel32.lib"
-    
-    @(default_calling_convention="stdcall")
-    foreign kernel32 {
-        AllocConsole :: proc() -> i32 ---
-        FreeConsole  :: proc() -> i32 ---
-    }
-}
 
 Paddle :: struct {
-    texture       : rl.Texture2D,
     textureCoords : rl.Rectangle,
     position      : rl.Vector2
 }
 
 Ball :: struct {
-    texture       : rl.Texture2D,
     textureCoords : rl.Rectangle,
     position      : rl.Vector2,
     velocity      : rl.Vector2,
@@ -30,7 +19,6 @@ Ball :: struct {
 }
 
 Brick :: struct {
-    texture       : rl.Texture2D,
     textureCoords : rl.Rectangle,
     damageCoords  : rl.Rectangle,
     position      : rl.Vector2,
@@ -96,7 +84,6 @@ main :: proc() {
 
     // Game Data
     player_paddle = Paddle {
-        texture       = sprite_atlas,
         textureCoords = rl.Rectangle{0, 0, 120, 20},
         position      = rl.Vector2{
             screen_params.x / 2 - 150,
@@ -105,7 +92,6 @@ main :: proc() {
     }
 
     ball = Ball {
-        texture       = sprite_atlas,
         textureCoords = rl.Rectangle{120, 0, 20, 20},
         position      = rl.Vector2{f32(screen_params.x / 2), f32(screen_params.y / 2) + 300},
         velocity      = rl.Vector2{0, -200},
@@ -122,7 +108,6 @@ main :: proc() {
         y_position := f32(row) * 20
 
         bricks[i] = Brick {
-            texture       = sprite_atlas,
             textureCoords = rl.Rectangle{0, 20, 60, 20},
             damageCoords  = rl.Rectangle{0, 40, 60, 20},
             position      = rl.Vector2{x_position, y_position},
@@ -138,7 +123,6 @@ main :: proc() {
         set_window_parameters(screen_width, screen_height, &screen_params)
         rl.BeginTextureMode(fullscreen_texture)
         rl.ClearBackground(rl.BLACK)
-
 
         // input
         if (rl.IsKeyDown(rl.KeyboardKey.RIGHT)) {
@@ -164,7 +148,7 @@ main :: proc() {
                     coords = bricks[i].damageCoords
                 }
                 rl.DrawTexturePro(
-                    bricks[i].texture, 
+                    sprite_atlas, 
                     coords, 
                     rl.Rectangle{bricks[i].position.x, bricks[i].position.y, 60, 20},
                     rl.Vector2{0, 0}, 
@@ -177,7 +161,7 @@ main :: proc() {
 
         // paddle
         rl.DrawTexturePro(
-            player_paddle.texture, 
+            sprite_atlas, 
             player_paddle.textureCoords, 
             rl.Rectangle{player_paddle.position.x, player_paddle.position.y, 160, 20},
             rl.Vector2{0, 0}, 
@@ -206,7 +190,7 @@ main :: proc() {
         }
 
         rl.DrawTexturePro(
-            ball.texture, 
+            sprite_atlas, 
             ball.textureCoords, 
             rl.Rectangle{ball.position.x, ball.position.y, ball.size, ball.size},
             rl.Vector2{0, 0}, 
